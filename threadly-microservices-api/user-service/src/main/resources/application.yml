@@ -1,0 +1,27 @@
+spring:
+  application:
+    name: user-service
+
+  # MySQL Database
+  datasource:
+    url: jdbc:mysql://localhost:3306/threadly_user_db?createDatabaseIfNotExist=true
+    username: root
+    password: 12345
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  # JPA/Hibernate
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    database-platform: org.hibernate.dialect.MySQL8Dialect
+
+# Server port
+server:
+  port: 8081
+
+# Eureka Client
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
