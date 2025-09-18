@@ -72,21 +72,5 @@ public class AuthController {
                 ));
     }
 
-    @PostMapping("/logout")
-    public ResponseEntity<ApiResponseDTO<Void>> logout(
-            @RequestHeader("Authorization") String authHeader,
-            HttpServletRequest servletRequest) {
 
-        String accessToken = authHeader.substring(7);
-
-        authService.logout(accessToken);
-
-        return ResponseEntity.ok(
-                ApiResponseDTO.ok(
-                        null,
-                        servletRequest.getRequestURI(),
-                        "Logged out successfully",
-                        200
-                ));
-    }
 }

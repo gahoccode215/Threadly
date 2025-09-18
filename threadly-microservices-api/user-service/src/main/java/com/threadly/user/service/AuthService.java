@@ -59,8 +59,8 @@ public class AuthService {
         User savedUser = userRepository.save(user);
 
         // Generate JWT tokens using new methods
-        String accessToken = jwtUtil.generateAccessToken(savedUser.getEmail());
-        String refreshToken = jwtUtil.generateRefreshToken(savedUser.getEmail());
+        String accessToken = jwtUtil.generateAccessToken(savedUser.getId());
+        String refreshToken = jwtUtil.generateRefreshToken(savedUser.getId());
 
         // Get role names
         Set<String> roleNames = savedUser.getRoles().stream()
@@ -102,8 +102,8 @@ public class AuthService {
         }
 
         // Generate JWT tokens using new methods
-        String accessToken = jwtUtil.generateAccessToken(user.getEmail());
-        String refreshToken = jwtUtil.generateRefreshToken(user.getEmail());
+        String accessToken = jwtUtil.generateAccessToken(user.getId());
+        String refreshToken = jwtUtil.generateRefreshToken(user.getId());
 
         // Get role names
         Set<String> roleNames = user.getRoles().stream()
@@ -139,18 +139,18 @@ public class AuthService {
             );
         }
 
-        // Extract email from refresh token
-        String email = jwtUtil.getEmailFromToken(refreshToken);
+        // Extract USER ID from refresh token (not email!)
+        Long userId = jwtUtil.getUserIdFromToken(refreshToken);
 
-        // Find user
-        User user = userRepository.findByEmail(email)
+        // Find user by ID
+        User user = userRepository.findById(userId)
                 .orElseThrow(() -> new InvalidCredentialsException(
                         "User not found for refresh token",
                         "USER_NOT_FOUND"
                 ));
 
-        // Generate new access token (keep same refresh token)
-        String newAccessToken = jwtUtil.generateAccessToken(user.getEmail());
+        // Generate new access token với user ID
+        String newAccessToken = jwtUtil.generateAccessToken(user.getId());
 
         // Get role names
         Set<String> roleNames = user.getRoles().stream()
@@ -171,20 +171,4 @@ public class AuthService {
                 .build();
     }
 
-
-    /**
-     * Logout - invalidate token (for future blacklist implementation)
-     */
-    public void logout(String accessToken) {
-        log.info("Logout attempt");
-
-        // Validate token exists and is valid
-        if (jwtUtil.validateAccessToken(accessToken)) {
-            String email = jwtUtil.getEmailFromToken(accessToken);
-            log.info("User logged out: {}", email);
-
-            // TODO: Implement token blacklist in Redis/Database
-            // For now, client-side token removal is sufficient
-        }
-    }
 }

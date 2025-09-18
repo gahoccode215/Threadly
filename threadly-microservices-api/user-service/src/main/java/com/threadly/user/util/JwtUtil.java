@@ -19,87 +19,86 @@ public class JwtUtil {
     @Value("${jwt.secret}")
     private String secret;
 
-    @Value("${jwt.access-token.expiration:3600000}") // 1 hour default
+    @Value("${jwt.access-token.expiration:3600000}")
     private long accessTokenExpiration;
 
-    @Value("${jwt.refresh-token.expiration:604800000}") // 7 days default
+    @Value("${jwt.refresh-token.expiration:604800000}")
     private long refreshTokenExpiration;
 
-    // Token types
     private static final String TOKEN_TYPE_ACCESS = "access";
     private static final String TOKEN_TYPE_REFRESH = "refresh";
     private static final String CLAIM_TYPE = "type";
 
-    /**
-     * Generate signing key from secret
-     */
     private SecretKey getSigningKey() {
         return Keys.hmacShaKeyFor(secret.getBytes());
     }
 
     /**
-     * Generate access token for user email
+     * Generate access token for user ID
      */
-    public String generateAccessToken(String email) {
+    public String generateAccessToken(Long userId) {
         Map<String, Object> claims = new HashMap<>();
         claims.put(CLAIM_TYPE, TOKEN_TYPE_ACCESS);
-        return generateToken(email, claims, accessTokenExpiration);
+        return generateToken(userId, claims, accessTokenExpiration);
     }
 
     /**
-     * Generate refresh token for user email
+     * Generate refresh token for user ID
      */
-    public String generateRefreshToken(String email) {
+    public String generateRefreshToken(Long userId) {
         Map<String, Object> claims = new HashMap<>();
         claims.put(CLAIM_TYPE, TOKEN_TYPE_REFRESH);
-        return generateToken(email, claims, refreshTokenExpiration);
+        return generateToken(userId, claims, refreshTokenExpiration);
     }
 
-    /**
-     * Generate token with claims and expiration
-     */
-    private String generateToken(String email, Map<String, Object> claims, long expiration) {
+    private String generateToken(Long userId, Map<String, Object> claims, long expiration) {
         Date now = new Date();
         Date expiryDate = new Date(now.getTime() + expiration);
 
         try {
             return Jwts.builder()
-                    .subject(email)
+                    .subject(String.valueOf(userId)) // ← Store userId as subject
                     .claims(claims)
                     .issuedAt(now)
                     .expiration(expiryDate)
                     .signWith(getSigningKey())
                     .compact();
         } catch (Exception e) {
-            log.error("Error generating JWT token for email: {}", email, e);
+            log.error("Error generating JWT token for userId: {}", userId, e);
             throw new RuntimeException("Error generating token");
         }
     }
 
     /**
-     * Extract email from JWT token
+     * Extract user ID from JWT token
      */
-    public String getEmailFromToken(String token) {
-        return getClaimFromToken(token, Claims::getSubject);
+    public Long getUserIdFromToken(String token) {
+        try {
+            String userIdStr = getClaimFromToken(token, Claims::getSubject);
+            return Long.valueOf(userIdStr);
+        } catch (Exception e) {
+            log.error("Error extracting userId from token", e);
+            throw new RuntimeException("Invalid token");
+        }
     }
 
     /**
-     * Get expiration date from token
+     * Extract user ID as string (for compatibility)
      */
+    public String getUserIdStringFromToken(String token) {
+        return getClaimFromToken(token, Claims::getSubject);
+    }
+
+    // ← Remove getEmailFromToken method completely or deprecate it
+
     public Date getExpirationDateFromToken(String token) {
         return getClaimFromToken(token, Claims::getExpiration);
     }
 
-    /**
-     * Get token type (access/refresh)
-     */
     public String getTokenType(String token) {
         return getClaimFromToken(token, claims -> claims.get(CLAIM_TYPE, String.class));
     }
 
-    /**
-     * Extract specific claim from token
-     */
     public <T> T getClaimFromToken(String token, Function<Claims, T> claimsResolver) {
         try {
             final Claims claims = getAllClaimsFromToken(token);
@@ -110,9 +109,6 @@ public class JwtUtil {
         }
     }
 
-    /**
-     * Get all claims from token
-     */
     private Claims getAllClaimsFromToken(String token) {
         return Jwts.parser()
                 .verifyWith(getSigningKey())
@@ -121,9 +117,6 @@ public class JwtUtil {
                 .getPayload();
     }
 
-    /**
-     * Validate JWT token
-     */
     public boolean isTokenValid(String token) {
         try {
             getAllClaimsFromToken(token);
@@ -134,9 +127,6 @@ public class JwtUtil {
         }
     }
 
-    /**
-     * Check if token is expired
-     */
     public boolean isTokenExpired(String token) {
         try {
             Date expiration = getExpirationDateFromToken(token);
@@ -147,9 +137,6 @@ public class JwtUtil {
         }
     }
 
-    /**
-     * Validate if token is access token
-     */
     public boolean isAccessToken(String token) {
         try {
             String tokenType = getTokenType(token);
@@ -159,9 +146,6 @@ public class JwtUtil {
         }
     }
 
-    /**
-     * Validate if token is refresh token
-     */
     public boolean isRefreshToken(String token) {
         try {
             String tokenType = getTokenType(token);
@@ -171,17 +155,10 @@ public class JwtUtil {
         }
     }
 
-
-    /**
-     * Validate access token specifically
-     */
     public boolean validateAccessToken(String token) {
         return isTokenValid(token) && isAccessToken(token);
     }
 
-    /**
-     * Validate refresh token specifically
-     */
     public boolean validateRefreshToken(String token) {
         return isTokenValid(token) && isRefreshToken(token);
     }
@@ -193,6 +170,5 @@ public class JwtUtil {
     public long getRefreshTokenExpirationInSeconds() {
         return refreshTokenExpiration / 1000;
     }
-
-
 }
+
